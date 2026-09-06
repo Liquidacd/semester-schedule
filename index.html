@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f5f7f2" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="description" content="2026-2027 学年第 1 学期个人课表" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+    <link rel="stylesheet" href="./styles.css" />
+    <title>本学期课表</title>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div>
+          <p class="term-label">2026–2027 · 第一学期</p>
+          <h1>本学期课表</h1>
+        </div>
+        <div class="network-state" id="network-state" role="status" aria-live="polite">
+          <span class="network-dot" aria-hidden="true"></span>
+          <span id="network-label">可离线使用</span>
+        </div>
+      </header>
+
+      <nav class="view-tabs" aria-label="课表视图">
+        <button class="view-tab is-active" type="button" data-view="today" aria-selected="true">今天</button>
+        <button class="view-tab" type="button" data-view="week" aria-selected="false">本周</button>
+      </nav>
+
+      <main>
+        <section id="today-view" class="view-panel" aria-labelledby="today-heading">
+          <div class="day-heading">
+            <div>
+              <p class="eyebrow" id="today-date"></p>
+              <h2 id="today-heading">今天</h2>
+            </div>
+            <span class="week-badge" id="today-week"></span>
+          </div>
+
+          <div id="term-status" class="term-status" hidden></div>
+          <div id="today-practice"></div>
+          <div id="today-summary" class="today-summary" aria-live="polite"></div>
+          <div id="today-timeline" class="timeline"></div>
+          <div id="next-course"></div>
+        </section>
+
+        <section id="week-view" class="view-panel" aria-labelledby="week-heading" hidden>
+          <div class="week-toolbar">
+            <button class="icon-button" id="previous-week" type="button" title="上一周" aria-label="上一周">‹</button>
+            <div class="week-title">
+              <p class="eyebrow" id="week-range"></p>
+              <h2 id="week-heading"></h2>
+            </div>
+            <button class="icon-button" id="next-week" type="button" title="下一周" aria-label="下一周">›</button>
+          </div>
+          <button class="return-button" id="current-week" type="button">回到本周</button>
+          <div id="week-practice"></div>
+          <div id="week-list" class="week-list"></div>
+        </section>
+      </main>
+
+      <footer>
+        <span>北京时间</span>
+        <span aria-hidden="true">·</span>
+        <span>第 1–16 周</span>
+      </footer>
+    </div>
+
+    <noscript>需要启用 JavaScript 才能按日期筛选课程。</noscript>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
