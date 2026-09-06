@@ -2,6 +2,12 @@
 
 面向手机的 2026-2027 学年第 1 学期静态课表。页面会以北京时间自动计算教学周，处理分段周次、单双周和第 6-9 周金工实训，可作为 PWA 添加到桌面并离线使用。
 
+## 在线访问
+
+[https://liquidacd.github.io/semester-schedule/](https://liquidacd.github.io/semester-schedule/)
+
+在手机浏览器打开后，可以通过浏览器菜单添加到主屏幕。
+
 ## 本地预览
 
 在项目目录启动任意静态文件服务器，例如：
