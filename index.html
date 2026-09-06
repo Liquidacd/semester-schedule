@@ -19,9 +19,15 @@
           <p class="term-label">2026–2027 · 第一学期</p>
           <h1>本学期课表</h1>
         </div>
-        <div class="network-state" id="network-state" role="status" aria-live="polite">
-          <span class="network-dot" aria-hidden="true"></span>
-          <span id="network-label">可离线使用</span>
+        <div class="header-actions">
+          <div class="network-state" id="network-state" role="status" aria-live="polite">
+            <span class="network-dot" aria-hidden="true"></span>
+            <span id="network-label">可离线使用</span>
+          </div>
+          <button class="manage-button" id="manage-courses" type="button">
+            <span aria-hidden="true">✎</span>
+            修改课程
+          </button>
         </div>
       </header>
 
@@ -60,6 +66,22 @@
           <div id="week-practice"></div>
           <div id="week-list" class="week-list"></div>
         </section>
+
+        <section id="manage-view" class="view-panel manage-view" aria-labelledby="manage-heading" hidden>
+          <div class="manage-heading">
+            <button class="icon-button" id="close-manager" type="button" title="返回课表" aria-label="返回课表">‹</button>
+            <div>
+              <p class="eyebrow" id="manage-count"></p>
+              <h2 id="manage-heading">修改课程</h2>
+            </div>
+            <button class="add-course-button" id="add-course" type="button">
+              <span aria-hidden="true">＋</span>
+              新增课程
+            </button>
+          </div>
+          <div id="manage-list" class="manage-list"></div>
+          <button class="reset-button" id="reset-courses" type="button">恢复初始课表</button>
+        </section>
       </main>
 
       <footer>
@@ -68,6 +90,78 @@
         <span>第 1–16 周</span>
       </footer>
     </div>
+
+    <dialog class="course-dialog" id="course-dialog" aria-labelledby="course-dialog-title">
+      <form id="course-form" method="dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">课程安排</p>
+            <h2 id="course-dialog-title">新增课程</h2>
+          </div>
+          <button class="dialog-close" id="close-course-dialog" type="button" title="关闭" aria-label="关闭">×</button>
+        </div>
+
+        <input id="course-id" name="courseId" type="hidden" />
+
+        <label class="form-field">
+          <span>课程名称</span>
+          <input id="course-name" name="courseName" type="text" maxlength="50" autocomplete="off" required />
+        </label>
+
+        <div class="form-grid">
+          <label class="form-field">
+            <span>星期</span>
+            <select id="course-weekday" name="weekday" required>
+              <option value="1">星期一</option>
+              <option value="2">星期二</option>
+              <option value="3">星期三</option>
+              <option value="4">星期四</option>
+              <option value="5">星期五</option>
+            </select>
+          </label>
+          <div class="form-field">
+            <span>上课节次</span>
+            <div class="period-selects">
+              <select id="period-start" name="periodStart" aria-label="开始节次" required></select>
+              <span aria-hidden="true">至</span>
+              <select id="period-end" name="periodEnd" aria-label="结束节次" required></select>
+            </div>
+          </div>
+        </div>
+
+        <output class="time-preview" id="time-preview" aria-live="polite"></output>
+
+        <label class="form-field">
+          <span>地点</span>
+          <input id="course-location" name="location" type="text" maxlength="50" autocomplete="off" required />
+        </label>
+
+        <label class="switch-field">
+          <span>线上课程</span>
+          <input id="course-online" name="online" type="checkbox" />
+        </label>
+
+        <fieldset class="weeks-fieldset">
+          <legend>上课周次</legend>
+          <div class="week-presets" aria-label="周次快捷选择">
+            <button type="button" data-week-preset="all">全学期</button>
+            <button type="button" data-week-preset="odd">单周</button>
+            <button type="button" data-week-preset="even">双周</button>
+            <button type="button" data-week-preset="clear">清空</button>
+          </div>
+          <div class="week-checkboxes" id="week-checkboxes"></div>
+        </fieldset>
+
+        <p class="form-error" id="form-error" role="alert" hidden></p>
+
+        <div class="dialog-actions">
+          <button class="secondary-button" id="cancel-course" type="button">取消</button>
+          <button class="primary-button" type="submit">保存课程</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
     <noscript>需要启用 JavaScript 才能按日期筛选课程。</noscript>
     <script type="module" src="./app.js"></script>

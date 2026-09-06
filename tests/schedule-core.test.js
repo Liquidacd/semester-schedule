@@ -80,6 +80,25 @@ test("week view always returns Monday through Friday", () => {
   assert.deepEqual(week.map((day) => day.weekday), [1, 2, 3, 4, 5]);
 });
 
+test("date and week queries accept a locally edited course list", () => {
+  const custom = {
+    id: "custom-course",
+    name: "新增课程",
+    weekday: 1,
+    periodStart: 3,
+    periodEnd: 4,
+    startTime: "10:00",
+    endTime: "11:35",
+    activeWeeks: [1],
+    location: "1 教 101",
+    tone: "green",
+  };
+  assert.deepEqual(getCoursesForDate("2026-09-07", [custom]).map((course) => course.name), [
+    "新增课程",
+  ]);
+  assert.equal(getCoursesForWeek(1, [custom])[0].courses[0].id, "custom-course");
+});
+
 test("schedule data remains valid after future edits", () => {
   assert.deepEqual(validateScheduleData(), []);
 });

@@ -62,22 +62,22 @@ export function getDateForWeekday(weekNumber, weekday) {
   return addDays(TERM.startDate, (weekNumber - 1) * 7 + (weekday - 1));
 }
 
-export function getCoursesForDate(dateKey) {
+export function getCoursesForDate(dateKey, courses = COURSES) {
   const weekNumber = getWeekNumber(dateKey);
   const weekday = getWeekday(dateKey);
   if (!isInTerm(weekNumber)) return [];
 
-  return COURSES.filter(
+  return courses.filter(
     (course) => course.weekday === weekday && course.activeWeeks.includes(weekNumber),
   ).sort((a, b) => a.periodStart - b.periodStart);
 }
 
-export function getCoursesForWeek(weekNumber) {
+export function getCoursesForWeek(weekNumber, courses = COURSES) {
   if (!isInTerm(weekNumber)) return [];
   return Array.from({ length: 5 }, (_, index) => {
     const weekday = index + 1;
     const dateKey = getDateForWeekday(weekNumber, weekday);
-    return { weekday, dateKey, courses: getCoursesForDate(dateKey) };
+    return { weekday, dateKey, courses: getCoursesForDate(dateKey, courses) };
   });
 }
 
@@ -98,7 +98,7 @@ export function getCourseState(course, currentMinutes) {
   return "finished";
 }
 
-export function findNextCourse(fromDate = new Date()) {
+export function findNextCourse(fromDate = new Date(), courses = COURSES) {
   const todayKey = toDateKey(fromDate);
   const currentMinutes = getShanghaiClock(fromDate);
   const termEnd = getDateForWeekday(TERM.totalWeeks, 7);
@@ -106,8 +106,8 @@ export function findNextCourse(fromDate = new Date()) {
   for (let offset = 0; offset <= TERM.totalWeeks * 7; offset += 1) {
     const dateKey = addDays(todayKey, offset);
     if (dateKey > termEnd) break;
-    const courses = getCoursesForDate(dateKey);
-    const course = courses.find(
+    const dayCourses = getCoursesForDate(dateKey, courses);
+    const course = dayCourses.find(
       (item) => offset > 0 || getCourseState(item, currentMinutes) !== "finished",
     );
     if (course) return { course, dateKey, offset };

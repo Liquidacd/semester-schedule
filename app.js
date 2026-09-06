@@ -1,4 +1,12 @@
-import { TERM } from "./schedule-data.js";
+import { PERIODS, TERM } from "./schedule-data.js";
+import {
+  STORAGE_KEY,
+  hydrateCourse,
+  loadCourses,
+  resetCourses,
+  saveCourses,
+  toneForCourse,
+} from "./course-store.js";
 import {
   WEEKDAY_NAMES,
   addDays,
@@ -13,12 +21,16 @@ import {
   isInTerm,
   parseDateKey,
   toDateKey,
+  validateScheduleData,
 } from "./schedule-core.js";
 
 const $ = (selector) => document.querySelector(selector);
 const todayKey = toDateKey(new Date());
 const actualWeek = getWeekNumber(todayKey);
 let selectedWeek = Math.min(Math.max(actualWeek, 1), TERM.totalWeeks);
+let currentView = "today";
+let activeCourses = loadCourses();
+let toastTimer;
 
 const dateFormatter = new Intl.DateTimeFormat("zh-CN", {
   timeZone: TERM.timeZone,
@@ -42,6 +54,39 @@ function element(tag, className, text) {
 
 function formatDateKey(dateKey) {
   return shortDateFormatter.format(parseDateKey(dateKey));
+}
+
+function makeCourseId() {
+  if (globalThis.crypto?.randomUUID) return `custom-${globalThis.crypto.randomUUID()}`;
+  return `custom-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function summarizeWeeks(activeWeeks) {
+  const sorted = [...activeWeeks].sort((a, b) => a - b);
+  const groups = [];
+  let start = sorted[0];
+  let previous = sorted[0];
+  for (const week of sorted.slice(1)) {
+    if (week === previous + 1) {
+      previous = week;
+      continue;
+    }
+    groups.push(start === previous ? `${start}` : `${start}–${previous}`);
+    start = week;
+    previous = week;
+  }
+  if (start !== undefined) groups.push(start === previous ? `${start}` : `${start}–${previous}`);
+  return `${groups.join("、")} 周`;
+}
+
+function showToast(message) {
+  const toast = $("#toast");
+  clearTimeout(toastTimer);
+  toast.textContent = message;
+  toast.hidden = false;
+  toastTimer = setTimeout(() => {
+    toast.hidden = true;
+  }, 2200);
 }
 
 function periodLabel(course) {
@@ -103,7 +148,7 @@ function renderToday() {
   const now = new Date();
   const dateKey = toDateKey(now);
   const weekNumber = getWeekNumber(dateKey);
-  const courses = getCoursesForDate(dateKey);
+  const courses = getCoursesForDate(dateKey, activeCourses);
   const currentMinutes = getShanghaiClock(now);
   const states = courses.map((course) => getCourseState(course, currentMinutes));
   const ongoingIndex = states.indexOf("ongoing");
@@ -149,7 +194,7 @@ function renderToday() {
   }
 
   const nextRoot = $("#next-course");
-  const next = findNextCourse(now);
+  const next = findNextCourse(now, activeCourses);
   const hasActiveCourse = ongoingIndex >= 0 || upcomingIndex >= 0;
   if (!hasActiveCourse && next) {
     const section = element("section", "next-section");
@@ -162,7 +207,7 @@ function renderToday() {
 }
 
 function renderWeek() {
-  const days = getCoursesForWeek(selectedWeek);
+  const days = getCoursesForWeek(selectedWeek, activeCourses);
   const monday = getDateForWeekday(selectedWeek, 1);
   const friday = getDateForWeekday(selectedWeek, 5);
   $("#week-heading").textContent = `第 ${selectedWeek} 周`;
@@ -197,6 +242,8 @@ function renderWeek() {
 }
 
 function setView(viewName) {
+  currentView = viewName;
+  document.body.classList.remove("is-managing");
   document.querySelectorAll("[data-view]").forEach((button) => {
     const active = button.dataset.view === viewName;
     button.classList.toggle("is-active", active);
@@ -204,7 +251,193 @@ function setView(viewName) {
   });
   $("#today-view").hidden = viewName !== "today";
   $("#week-view").hidden = viewName !== "week";
+  $("#manage-view").hidden = true;
   if (viewName === "week") renderWeek();
+}
+
+function refreshSchedule() {
+  renderToday();
+  renderWeek();
+  renderManager();
+}
+
+function managerCourseRow(course) {
+  const row = element("article", `manager-course tone-${course.tone}`);
+  const accent = element("span", "manager-course-accent");
+  accent.setAttribute("aria-hidden", "true");
+  const details = element("div", "manager-course-details");
+  details.append(
+    element("h4", "manager-course-name", course.name),
+    element(
+      "p",
+      "manager-course-meta",
+      `${periodLabel(course)} · ${course.location} · ${summarizeWeeks(course.activeWeeks)}`,
+    ),
+  );
+  const actions = element("div", "row-actions");
+  const edit = element("button", "row-icon-button", "✎");
+  edit.type = "button";
+  edit.title = `编辑${course.name}`;
+  edit.setAttribute("aria-label", `编辑${course.name}`);
+  edit.addEventListener("click", () => openCourseDialog(course));
+  const remove = element("button", "row-icon-button is-danger", "×");
+  remove.type = "button";
+  remove.title = `删除${course.name}`;
+  remove.setAttribute("aria-label", `删除${course.name}`);
+  remove.addEventListener("click", () => deleteCourse(course));
+  actions.append(edit, remove);
+  row.append(accent, details, actions);
+  return row;
+}
+
+function renderManager() {
+  const sorted = [...activeCourses].sort(
+    (a, b) => a.weekday - b.weekday || a.periodStart - b.periodStart || a.name.localeCompare(b.name, "zh-CN"),
+  );
+  $("#manage-count").textContent = `本设备 · ${sorted.length} 条安排`;
+  const groups = Array.from({ length: 5 }, (_, index) => {
+    const weekday = index + 1;
+    const courses = sorted.filter((course) => course.weekday === weekday);
+    const section = element("section", "manager-day");
+    section.append(element("h3", "manager-day-title", WEEKDAY_NAMES[weekday]));
+    const list = element("div", "manager-day-list");
+    list.replaceChildren(
+      ...(courses.length
+        ? courses.map(managerCourseRow)
+        : [element("p", "manager-empty", "暂无课程")]),
+    );
+    section.append(list);
+    return section;
+  });
+  $("#manage-list").replaceChildren(...groups);
+}
+
+function openManager() {
+  document.body.classList.add("is-managing");
+  $("#today-view").hidden = true;
+  $("#week-view").hidden = true;
+  $("#manage-view").hidden = false;
+  renderManager();
+  window.scrollTo({ top: 0, behavior: "auto" });
+}
+
+function setSelectedWeeks(activeWeeks) {
+  document.querySelectorAll('[name="activeWeeks"]').forEach((checkbox) => {
+    checkbox.checked = activeWeeks.includes(Number(checkbox.value));
+  });
+}
+
+function updateTimePreview() {
+  const start = Number($("#period-start").value);
+  const end = Number($("#period-end").value);
+  const valid = PERIODS[start] && PERIODS[end] && start <= end;
+  $("#time-preview").textContent = valid
+    ? `${PERIODS[start].start}–${PERIODS[end].end}`
+    : "结束节次不能早于开始节次";
+  $("#time-preview").classList.toggle("is-error", !valid);
+}
+
+function openCourseDialog(course = null) {
+  const dialog = $("#course-dialog");
+  $("#course-dialog-title").textContent = course ? "编辑课程" : "新增课程";
+  $("#course-id").value = course?.id || "";
+  $("#course-name").value = course?.name || "";
+  $("#course-weekday").value = String(course?.weekday || 1);
+  $("#period-start").value = String(course?.periodStart || 1);
+  $("#period-end").value = String(course?.periodEnd || 2);
+  $("#course-location").value = course?.location || "";
+  $("#course-online").checked = Boolean(course?.online);
+  setSelectedWeeks(course?.activeWeeks || Array.from({ length: TERM.totalWeeks }, (_, index) => index + 1));
+  $("#form-error").hidden = true;
+  updateTimePreview();
+  dialog.showModal();
+  $("#course-name").focus();
+}
+
+function closeCourseDialog() {
+  $("#course-dialog").close();
+}
+
+function deleteCourse(course) {
+  if (!window.confirm(`删除“${course.name}”这条安排？`)) return;
+  activeCourses = activeCourses.filter((item) => item.id !== course.id);
+  const persisted = saveCourses(activeCourses);
+  refreshSchedule();
+  showToast(persisted ? "课程已删除" : "已删除，但无法保存到本设备");
+}
+
+function saveCourse(event) {
+  event.preventDefault();
+  const id = $("#course-id").value;
+  const existing = activeCourses.find((course) => course.id === id);
+  const name = $("#course-name").value.trim();
+  const location = $("#course-location").value.trim();
+  const activeWeeks = [...document.querySelectorAll('[name="activeWeeks"]:checked')].map((item) =>
+    Number(item.value),
+  );
+  const periodStart = Number($("#period-start").value);
+  const periodEnd = Number($("#period-end").value);
+
+  let error = "";
+  if (!name) error = "请填写课程名称";
+  else if (!location) error = "请填写地点";
+  else if (periodStart > periodEnd) error = "结束节次不能早于开始节次";
+  else if (!activeWeeks.length) error = "请至少选择一个上课周次";
+
+  const errorNode = $("#form-error");
+  if (error) {
+    errorNode.textContent = error;
+    errorNode.hidden = false;
+    return;
+  }
+
+  const updated = hydrateCourse({
+    ...existing,
+    id: id || makeCourseId(),
+    name,
+    shortName: existing?.name === name ? existing.shortName : undefined,
+    weekday: Number($("#course-weekday").value),
+    periodStart,
+    periodEnd,
+    activeWeeks,
+    location,
+    online: $("#course-online").checked,
+    tone: existing?.tone || toneForCourse(name),
+  });
+  const candidate = existing
+    ? activeCourses.map((course) => (course.id === existing.id ? updated : course))
+    : [...activeCourses, updated];
+  const validationErrors = validateScheduleData(candidate);
+  if (validationErrors.length) {
+    errorNode.textContent = validationErrors[0];
+    errorNode.hidden = false;
+    return;
+  }
+
+  activeCourses = candidate;
+  const persisted = saveCourses(activeCourses);
+  closeCourseDialog();
+  refreshSchedule();
+  showToast(
+    persisted
+      ? existing
+        ? "课程已更新"
+        : "课程已添加"
+      : "已更新，但无法保存到本设备",
+  );
+}
+
+function applyWeekPreset(preset) {
+  const weeks = Array.from({ length: TERM.totalWeeks }, (_, index) => index + 1);
+  const selected =
+    preset === "all"
+      ? weeks
+      : preset === "odd"
+        ? weeks.filter((week) => week % 2 === 1)
+        : preset === "even"
+          ? weeks.filter((week) => week % 2 === 0)
+          : [];
+  setSelectedWeeks(selected);
 }
 
 function updateNetworkState() {
@@ -232,6 +465,35 @@ $("#current-week").addEventListener("click", () => {
   renderWeek();
 });
 
+$("#manage-courses").addEventListener("click", openManager);
+$("#close-manager").addEventListener("click", () => setView(currentView));
+$("#add-course").addEventListener("click", () => openCourseDialog());
+$("#close-course-dialog").addEventListener("click", closeCourseDialog);
+$("#cancel-course").addEventListener("click", closeCourseDialog);
+$("#course-form").addEventListener("submit", saveCourse);
+$("#period-start").addEventListener("change", updateTimePreview);
+$("#period-end").addEventListener("change", updateTimePreview);
+$("#course-online").addEventListener("change", (event) => {
+  if (event.target.checked && !$("#course-location").value.trim()) {
+    $("#course-location").value = "线上课程";
+  }
+});
+document.querySelectorAll("[data-week-preset]").forEach((button) => {
+  button.addEventListener("click", () => applyWeekPreset(button.dataset.weekPreset));
+});
+$("#reset-courses").addEventListener("click", () => {
+  if (!window.confirm("恢复初始课表？本设备上的课程修改将被清除。")) return;
+  activeCourses = resetCourses();
+  refreshSchedule();
+  showToast("已恢复初始课表");
+});
+
+window.addEventListener("storage", (event) => {
+  if (event.key !== STORAGE_KEY) return;
+  activeCourses = loadCourses();
+  refreshSchedule();
+});
+
 window.addEventListener("online", updateNetworkState);
 window.addEventListener("offline", updateNetworkState);
 
@@ -239,8 +501,22 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
 }
 
-renderToday();
-renderWeek();
+for (let period = 1; period <= 10; period += 1) {
+  $("#period-start").append(new Option(`第 ${period} 节`, String(period)));
+  $("#period-end").append(new Option(`第 ${period} 节`, String(period)));
+}
+
+for (let week = 1; week <= TERM.totalWeeks; week += 1) {
+  const label = element("label", "week-checkbox");
+  const checkbox = element("input");
+  checkbox.type = "checkbox";
+  checkbox.name = "activeWeeks";
+  checkbox.value = String(week);
+  label.append(checkbox, element("span", "", String(week)));
+  $("#week-checkboxes").append(label);
+}
+
+refreshSchedule();
 updateNetworkState();
 
 setInterval(renderToday, 60_000);

@@ -1,4 +1,4 @@
-const CACHE_NAME = "semester-schedule-runtime-v1";
+const CACHE_NAME = "semester-schedule-runtime-v2";
 const APP_ASSETS = [
   "./",
   "./index.html",
@@ -6,6 +6,7 @@ const APP_ASSETS = [
   "./app.js",
   "./schedule-data.js",
   "./schedule-core.js",
+  "./course-store.js",
   "./manifest.webmanifest",
   "./icons/icon.svg",
   "./icons/icon-192.png",
