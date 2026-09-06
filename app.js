@@ -1,5 +1,6 @@
 import { PERIODS, TERM } from "./schedule-data.js";
 import {
+  COURSE_TONES,
   STORAGE_KEY,
   hydrateCourse,
   loadCourses,
@@ -31,6 +32,16 @@ let selectedWeek = Math.min(Math.max(actualWeek, 1), TERM.totalWeeks);
 let currentView = "today";
 let activeCourses = loadCourses();
 let toastTimer;
+
+const TONE_LABELS = Object.freeze({
+  green: "松绿",
+  amber: "琥珀",
+  coral: "珊瑚",
+  blue: "湖蓝",
+  red: "砖红",
+  purple: "紫灰",
+  teal: "青绿",
+});
 
 const dateFormatter = new Intl.DateTimeFormat("zh-CN", {
   timeZone: TERM.timeZone,
@@ -327,6 +338,11 @@ function setSelectedWeeks(activeWeeks) {
   });
 }
 
+function setSelectedTone(tone) {
+  const selected = document.querySelector(`[name="courseTone"][value="${tone}"]`);
+  if (selected) selected.checked = true;
+}
+
 function updateTimePreview() {
   const start = Number($("#period-start").value);
   const end = Number($("#period-end").value);
@@ -347,6 +363,7 @@ function openCourseDialog(course = null) {
   $("#period-end").value = String(course?.periodEnd || 2);
   $("#course-location").value = course?.location || "";
   $("#course-online").checked = Boolean(course?.online);
+  setSelectedTone(course?.tone || toneForCourse(""));
   setSelectedWeeks(course?.activeWeeks || Array.from({ length: TERM.totalWeeks }, (_, index) => index + 1));
   $("#form-error").hidden = true;
   updateTimePreview();
@@ -402,7 +419,7 @@ function saveCourse(event) {
     activeWeeks,
     location,
     online: $("#course-online").checked,
-    tone: existing?.tone || toneForCourse(name),
+    tone: document.querySelector('[name="courseTone"]:checked')?.value || toneForCourse(name),
   });
   const candidate = existing
     ? activeCourses.map((course) => (course.id === existing.id ? updated : course))
@@ -514,6 +531,20 @@ for (let week = 1; week <= TERM.totalWeeks; week += 1) {
   checkbox.value = String(week);
   label.append(checkbox, element("span", "", String(week)));
   $("#week-checkboxes").append(label);
+}
+
+for (const tone of COURSE_TONES) {
+  const label = element("label", `tone-option tone-${tone}`);
+  label.title = TONE_LABELS[tone];
+  const radio = element("input");
+  radio.type = "radio";
+  radio.name = "courseTone";
+  radio.value = tone;
+  radio.setAttribute("aria-label", TONE_LABELS[tone]);
+  const swatch = element("span", "tone-swatch");
+  swatch.setAttribute("aria-hidden", "true");
+  label.append(radio, swatch);
+  $("#course-tones").append(label);
 }
 
 refreshSchedule();

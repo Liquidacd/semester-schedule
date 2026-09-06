@@ -1,8 +1,15 @@
 import { COURSES, PERIODS } from "./schedule-data.js";
 
 export const STORAGE_KEY = "semester-schedule:courses:v1";
-
-const TONES = ["green", "amber", "coral", "blue", "red", "purple", "teal"];
+export const COURSE_TONES = Object.freeze([
+  "green",
+  "amber",
+  "coral",
+  "blue",
+  "red",
+  "purple",
+  "teal",
+]);
 
 function cloneCourse(course) {
   return {
@@ -17,7 +24,7 @@ export function getDefaultCourses() {
 
 export function toneForCourse(name) {
   const hash = [...name].reduce((total, character) => total + character.codePointAt(0), 0);
-  return TONES[hash % TONES.length];
+  return COURSE_TONES[hash % COURSE_TONES.length];
 }
 
 export function hydrateCourse(course) {
@@ -26,7 +33,7 @@ export function hydrateCourse(course) {
     activeWeeks: [...course.activeWeeks].sort((a, b) => a - b),
     startTime: PERIODS[course.periodStart]?.start || course.startTime,
     endTime: PERIODS[course.periodEnd]?.end || course.endTime,
-    tone: course.tone || toneForCourse(course.name),
+    tone: COURSE_TONES.includes(course.tone) ? course.tone : toneForCourse(course.name),
   };
 }
 

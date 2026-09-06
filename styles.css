@@ -760,17 +760,78 @@ body.is-managing .manage-button {
   accent-color: var(--green);
 }
 
-.weeks-fieldset {
+.weeks-fieldset,
+.tone-fieldset {
   margin: 0;
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 6px;
 }
 
-.weeks-fieldset legend {
+.tone-fieldset {
+  margin-bottom: 16px;
+}
+
+.weeks-fieldset legend,
+.tone-fieldset legend {
   padding: 0 6px;
   font-size: 0.78rem;
   font-weight: 750;
+}
+
+.tone-options {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tone-option {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  cursor: pointer;
+}
+
+.tone-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.tone-swatch {
+  display: grid;
+  width: 100%;
+  max-width: 40px;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 4px solid var(--surface);
+  border-radius: 50%;
+  background: var(--tone);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.tone-swatch::after {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #fff;
+  content: "";
+  opacity: 0;
+}
+
+.tone-option input:checked + .tone-swatch {
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--tone);
+}
+
+.tone-option input:checked + .tone-swatch::after {
+  opacity: 1;
+}
+
+.tone-option input:focus-visible + .tone-swatch {
+  outline: 3px solid rgb(23 107 77 / 28%);
+  outline-offset: 4px;
 }
 
 .week-presets {
@@ -987,6 +1048,12 @@ noscript {
 
   .week-checkbox span {
     min-height: 32px;
+  }
+}
+
+@media (max-width: 360px) {
+  .tone-options {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

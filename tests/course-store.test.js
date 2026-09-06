@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  COURSE_TONES,
   STORAGE_KEY,
   getDefaultCourses,
   hydrateCourse,
@@ -40,9 +41,10 @@ test("loads independent copies of the default schedule", () => {
 test("saves and reloads local course changes", () => {
   const storage = new MemoryStorage();
   const courses = getDefaultCourses();
-  courses[0] = { ...courses[0], location: "新教室 101" };
+  courses[0] = { ...courses[0], location: "新教室 101", tone: "purple" };
   assert.equal(saveCourses(courses, storage), true);
   assert.equal(loadCourses(storage)[0].location, "新教室 101");
+  assert.equal(loadCourses(storage)[0].tone, "purple");
 });
 
 test("falls back to defaults when saved data is corrupt", () => {
@@ -64,6 +66,21 @@ test("hydrates calculated time and an automatic color", () => {
   assert.equal(course.startTime, "10:00");
   assert.equal(course.endTime, "11:35");
   assert.deepEqual(course.activeWeeks, [1, 2, 3]);
+  assert.equal(course.tone, toneForCourse("测试课程"));
+});
+
+test("replaces an unsupported saved color with a valid course color", () => {
+  const course = hydrateCourse({
+    id: "custom-course",
+    name: "测试课程",
+    weekday: 1,
+    periodStart: 1,
+    periodEnd: 2,
+    activeWeeks: [1],
+    location: "1 教 101",
+    tone: "transparent",
+  });
+  assert.equal(COURSE_TONES.includes(course.tone), true);
   assert.equal(course.tone, toneForCourse("测试课程"));
 });
 
